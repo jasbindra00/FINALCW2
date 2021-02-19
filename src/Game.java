@@ -46,7 +46,7 @@ public final class Game {
      * Description : A mapping from a string to a command checker.
      * A hashmap was chosen as opposed to an array, for ease of use, intuition, and for longevity purposes.
      */
-    private HashMap<String, CommandInfo> game_commands = new HashMap<String, CommandInfo>();
+    private HashMap<String, GameCommand> game_commands = new HashMap<String, GameCommand>();
 
     /**
      * Description : Default constructor registering all necessary map parameters, and commands.
@@ -370,6 +370,13 @@ public final class Game {
     public ArrayList<String> Update(String user_input) {
         //We want to execute all of the actions for the hero, and log everything that he should see. Ie the response of all of his commands, as well as if he as won or lost.
         //Explanation : Iterate through each player, ask for their commands, and try to execute their command.
+
+
+        /*
+
+
+         */
+
         ArrayList<String> res = new ArrayList<>();
         ((Hero)this.players.get(0)).setPlayerAction(user_input);
         for (int i = 0; i < players.size(); ++i) {
@@ -423,7 +430,7 @@ public final class Game {
      * @return Whether or not the game is over.
      */
     public Boolean IsGameOver() {
-        return game_over;
+        return this.game_over;
     }
 
     /**
@@ -502,10 +509,9 @@ public final class Game {
         //Explanation : If a command with the same name exists already, return false.
         if (game_commands.containsKey(command_name)) return false;
         //Explanation : Initalise and insert the command.
-        this.game_commands.put(command_name, new CommandInfo(accepted_arguments, required_arguments, callable));
+        this.game_commands.put(command_name, new GameCommand(accepted_arguments, required_arguments, callable));
         return true;
     }
-
 
 
     public ArrayList<String> feedInput(String str)

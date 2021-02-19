@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class AutomatedResponse
@@ -23,6 +22,5 @@ public class AutomatedResponse
     {
         this.keys = keys;
         this.responses = responses;
-
     }
 }

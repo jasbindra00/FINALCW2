@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -143,5 +144,23 @@ public final class Utility {
     public static void print(String str)
     {
         System.out.println(str);
+    }
+    public static String sensorWords(String input, ArrayList<String> banned_words)
+    {
+        ArrayList<String> split = new ArrayList<String>(Arrays.asList(input.split(" ")));
+        for(int i = 0; i < split.size(); ++i)
+        {
+            String word = split.get(i);
+            for(String banned_word : banned_words)
+            {
+                String upper_word = word.toUpperCase();
+
+                if(upper_word.equals(banned_word))
+                {
+                    split.set(i,new String("*").repeat(word.length()));
+                }
+            }
+        }
+        return String.join(" ", split);
     }
 }

@@ -1,16 +1,52 @@
-import java.net.Socket;
+import java.awt.*;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.concurrent.ThreadLocalRandom;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class ChatBot extends Client
 {
     static public ArrayList<AutomatedResponse> catered_responses;
     static public AutomatedResponse default_responses;
-    static public void initialise_responses()
+
+    public ChatBot(InetSocketAddress server_config, ThreadRunner<PacketReceiver> input_run, PacketHandler server_packet_handler, ThreadRunner<PacketSender> output_run) throws Exception
+    {
+        super(SenderType.BOTCLIENT, server_config, input_run, server_packet_handler, output_run);
+    }
+    public static void senderRun(PacketSender sender) {
+        try
+        {
+            sender.fetchUsername();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+    public static void receiverRun(PacketReceiver receiver)
+    {
+        Client.receiverRun(receiver);
+    }
+    public static void chatbotPacketHandler(Packet packet, PacketReceiver receiver)
+    {
+        try {
+            Client.clientPacketHandler(packet, receiver);
+            switch (packet.packet_type.toString())
+            {
+                case ("BROADCAST"):
+                {
+                    String automated_response = ChatBot.getAutomatedResponse(packet.data);
+                    ((ChatBot) receiver.getClient()).send(new Packet("Chatbot", automated_response, Packet.PacketType.MESSAGE, SenderType.BOTCLIENT));
+                    break;
+                }
+            }
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+    public static void initialise_responses()
     {
         catered_responses = new ArrayList<>();
         ArrayList<String> greetings = new ArrayList<String>() {{ add("HELLO"); add("HI");add("AFTERNOON");add("MORNING");add("EVENING");add("WHATSUP");add("WASSUP"); }};
@@ -28,10 +64,10 @@ public class ChatBot extends Client
         }};
         catered_responses.add(new AutomatedResponse(good_news, good_news_responses));
         ArrayList<String> laughter = new ArrayList<String>() {{ add("LOL");add("LMAO");add("LMFAO");add("HAHA"); }};
-            ArrayList<String> laughter_responses = new ArrayList<String>() {{
-                add("I would laugh but I am physically incapable of doing so.");
-                add("That's not funny. What's funny is the fragility of the human race.");
-            }};
+        ArrayList<String> laughter_responses = new ArrayList<String>() {{
+            add("I would laugh but I am physically incapable of doing so.");
+            add("That's not funny. What's funny is the fragility of the human race.");
+        }};
         catered_responses.add(new AutomatedResponse(laughter, laughter_responses));
         ArrayList<String> disagreement = new ArrayList<String>() {{
             add("NO");
@@ -49,18 +85,18 @@ public class ChatBot extends Client
         catered_responses.add(new AutomatedResponse(disagreement, disagreement_responses));
 
         ArrayList<String> agreement = new ArrayList<String>() {{
-                add("YES");
-                add("YE");
-                add("YEAH");
-                add("YUP");
-                add("YES?");
-                add("CORRECT?");
-            }};
-            ArrayList<String> agreement_responses = new ArrayList<String>() {{
-                add("So we are in agreement then.");
-                add("Indeed.");
-                add("So are you agreeing with me, correct?");
-            }};
+            add("YES");
+            add("YE");
+            add("YEAH");
+            add("YUP");
+            add("YES?");
+            add("CORRECT?");
+        }};
+        ArrayList<String> agreement_responses = new ArrayList<String>() {{
+            add("So we are in agreement then.");
+            add("Indeed.");
+            add("So are you agreeing with me, correct?");
+        }};
 
         catered_responses.add(new AutomatedResponse(agreement, agreement_responses));
 
@@ -93,15 +129,9 @@ public class ChatBot extends Client
         }};
         default_responses = new AutomatedResponse(new ArrayList<>(){{add(".");}}, random_responses);
     }
-
-    public ChatBot() throws Exception
-    {
-        super();
-    }
     public static String getAutomatedResponse(String message)
     {
         message = message.toUpperCase();
-        //Remove all punctuation
         ArrayList<String> split_message = new ArrayList<String>(Arrays.asList( message.replaceAll("[^a-zA-Z ]", "").toUpperCase().split("\\s+")));
         for(String word : split_message)
         {
@@ -115,52 +145,16 @@ public class ChatBot extends Client
         //Choose a random number.
         return default_responses.hasResponse(".");
     }
-
-    void send(Packet packet) throws Exception
+    public void send(Packet packet) throws Exception
     {
-        this.writing_thread.send(packet);
+        this.output_thread.send(packet);
     }
     public static void main(String[] args)
     {
-        try {
-            ChatBot chatbot = new ChatBot();
-            UserListener user_listener = new UserListener(chatbot, chatbot.getConnectedSocket()) {
-                @Override
-                public void run()
-                {
-                    try {
-                        this.fetchUsername();
-                    }
-                    catch(Exception e)
-                    {
-                        e.printStackTrace();
-                    }
-                    //This does not need to be anything at all since our response is a function of the user.
-                }
-            };
-            ServerListener server_listener = new ServerListener(chatbot, chatbot.getConnectedSocket())
-            {
-                //Listens for server requests on thread.
-                //Handles and outputs to the server requests on another thread.
-                @Override
-                public void handlePacket(Packet packet) throws Exception
-                {
-                    super.handlePacket(packet);
-                    switch(packet.packet_type.toString())
-                    {
-                        case("BROADCAST"):
-                        {
-                            //Recieves a broadcast.
-                            //Get the automated response based on the message.
-                            String automated_response = ChatBot.getAutomatedResponse(packet.data);
-                            ((ChatBot)this.client).send(new Packet("Chatbot", automated_response, Packet.PacketType.MESSAGE));
-                            //Route this message to the reader.
-                        }
-                    }
-                }
-            };
-            ChatBot.initialise_responses();
-            chatbot.initialise(user_listener,server_listener);
+        ChatBot.initialise_responses();
+        try
+        {
+            ChatBot chatbot = new ChatBot(new InetSocketAddress(InetAddress.getLoopbackAddress(), 4999), ChatBot::receiverRun, ChatBot::chatbotPacketHandler, ChatBot::senderRun);
             chatbot.start();
         }
         catch(Exception e)
@@ -168,10 +162,6 @@ public class ChatBot extends Client
             e.printStackTrace();
         }
     }
-
-
-
-
 
 
 }

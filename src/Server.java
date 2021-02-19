@@ -1,5 +1,4 @@
 import java.io.*;
-import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -9,166 +8,133 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public final class Server{
 
-    private ArrayList<CommandInfo> server_commands;
     private ArrayList<InetSocketAddress> banned_clients;
     private ArrayList<SocketHandler> client_endpoints;
+    private ArrayList<String> sensored_words;
+
     private ServerSocket input_socket;
     private Socket tmp_output_socket;
     private Integer max_client_ID;
     private boolean is_running;
     private ReentrantLock mutex;
-    public static int strike_threshold = 3;
-    public static int dod_client_id = 0;
-    public Server()
+    public static final int strike_threshold = 3;
+
+    public Server(ArrayList<String> sensored_words)
     {
+        this.sensored_words = sensored_words;
         this.mutex = new ReentrantLock();
         this.banned_clients = new ArrayList<>();
-        this.server_commands = new ArrayList<>();
-
-    }
-    public String foo(ArrayList<String> str)
-    {
-        System.out.println("Foo");
-        return "kicking user.";
-    }
-    public void checkServerCommand(String input)
-    {
-        for(CommandInfo command : this.server_commands)
-        {
-
-
-        }
-    }
-    private void init(InetSocketAddress address) throws Exception
-    {
         this.client_endpoints = new ArrayList<>();
         this.max_client_ID = 0;
         this.is_running = false;
-        this.input_socket = new ServerSocket(address.getPort(), 0, address.getAddress());
-        this.is_running = true;
-
     }
-    public boolean initialise()
+    private void introduceServer() throws Exception
     {
-        if(this.is_running) return true;
-        try {
-            BufferedReader console_reader = new BufferedReader(new InputStreamReader(System.in));
-            Utility.print("Enter desired port number: ");
-            String port_number = console_reader.readLine();
-            Utility.print("Enter desired IP address or name: ");
-            String address = console_reader.readLine();
-            Utility.print("Waking Apollo...");
-            Thread.sleep(1000);
-            Utility.print("Oiling robots...");
-            this.init(new InetSocketAddress(address, Integer.parseInt(port_number)));
-            Thread.sleep(2000);
-            Utility.print("Apollo is up.");
-            this.start();
-            return true;
-        }
-        catch(Exception exception)
+        ArrayList<String> dialogue = new ArrayList<String>(){{
+        add("Waking Apollo...");
+        add("Swapping space and time...");
+        add("Feeding monkeys...");
+        add("Checking flux capacitors...");
+        add("Apollo is up.");
+        }};
+        for(String string : dialogue)
         {
-            exception.printStackTrace();
-            return false;
-        }
-
-    }
-    private SocketHandler getClient(int client_ID)
-    {
-        return this.client_endpoints.stream().filter(client -> client.getClientID() == client_ID).findAny().orElse(null);
-    }
-    private SocketHandler getClient(String client_name)
-    {
-        return this.client_endpoints.stream().filter(client -> client.getClientName().equals(client_name)).findAny().orElse(null);
-    }
-    //Called by a given thread to remove the client. This is called after a disconnection message has been sent to the client.
-    public void removeClient(Integer client_ID) throws Exception
-    {
-        this.mutex.lock();
-        try {
-            //Explanation: Find the client handler with the given client ID.
-            SocketHandler client_configuration = this.getClient(client_ID);
-            //Client did not exist.
-            if(client_configuration == null) return;
-            //Explanation: Stop the inner thread loop from running.
-            client_configuration.terminate();
-            //Join the thread back together.
-            client_configuration.join();
-            //Remove the client_configuration from our array.
-            this.client_endpoints.remove(client_ID);
-        }
-        finally{
-            this.mutex.unlock();
+            Utility.print(string);
+            Thread.sleep(1500);
         }
     }
-    //Called by the sockethandler when receiving a message from a given user.
-    public void send(Packet packet, int to_client_ID)
+    public void launch()
     {
-        this.mutex.lock();
-        try{
-            SocketHandler client_handler = this.getClient(to_client_ID);
-            if(client_handler== null)
+        if(this.is_running) return;
+            while(!this.is_running)
             {
-                //Tried to send to client which didn't exist.
-                return;
+                BufferedReader console_reader = new BufferedReader(new InputStreamReader(System.in));
+                try
+                {
+                    Utility.print("Enter desired port number: ");
+                    String port_number = console_reader.readLine();
+                    Utility.print("Enter desired IP address or name: ");
+                    String address = console_reader.readLine();
+                    this.input_socket = new ServerSocket(Integer.parseInt(port_number), 0, InetAddress.getByName(address));
+                    this.is_running = true;
+                }
+                catch(IOException e)
+                {
+                    e.printStackTrace();
+                }
             }
-            client_handler.handlePacket(packet);
-        }
-        finally{
-            this.mutex.unlock();
-        }
-    }
-    public void send(Packet packet, String to_client_name)
-    {
-        this.mutex.lock();
-        try{
-
-            SocketHandler client_handler = this.getClient(to_client_name);
-            if(client_handler== null)
+            try
             {
-                //Tried to send to client which didn't exist.
-                return;
+                ArrayList<String> dialogue = new ArrayList<String>(){{
+                    add("Waking Apollo...");
+                    add("Swapping space and time...");
+                    add("Feeding monkeys...");
+                    add("Checking flux capacitors...");
+                    add("Apollo is up.");
+                }};
+                for(String string : dialogue)
+                {
+                    Utility.print(string);
+                    Thread.sleep(1000);
+                }
             }
-            client_handler.handlePacket(packet);
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+            this.listen();
+
+            //Add the DoD client here.
+
         }
-        finally{
-            this.mutex.unlock();
-        }
-    }
-    public void broadcast(Packet packet, int sent_from_ID) throws Exception {
-        //Do some non specific stuff
-        this.mutex.lock();
-        try {
-            for (SocketHandler handler : this.client_endpoints) {
-                if (handler.getClientID() == sent_from_ID || handler.isInGame()) continue;
-                handler.handlePacket(packet);
+
+    public void listen() {
+            while(this.is_running)
+            {
+                try { this.tmp_output_socket = input_socket.accept(); }
+                catch(Exception e) { e.printStackTrace(); }
+                Thread thread = new Thread()
+                {
+                    @Override
+                    public void run()
+                    {
+                        try { addClient(tmp_output_socket); }
+                        catch(Exception e) {e.printStackTrace();}
+                    }
+                };
+                thread.start();
+                //this.addClient(this.tmp_output_socket);
+            }
+            try { this.input_socket.close(); }
+            catch(Exception e)
+            {
+                e.printStackTrace();
             }
         }
-        finally{
-            this.mutex.unlock();
-        }
-    }
-    private Packet checkUserBan(Socket output_socket)
+
+    public synchronized void send(Packet packet, int to_client_ID)
     {
-        InetAddress client_IP = output_socket.getInetAddress();
-        int client_port = output_socket.getPort();
-        Packet response_packet = new Packet();
-        for (InetSocketAddress banned_config : this.banned_clients)
-        {
-            if (banned_config.getAddress().toString().equals(client_IP.toString()) && banned_config.getPort() == client_port) {
-                return new Packet("Server","Unauthorised request. You have banned from the server because of past behaviour.", Packet.PacketType.CONNECT_DENIED);
-            }
-        }
-        return new Packet("Server","Welcome to the Apollo Server. Please enter your desired username.", Packet.PacketType.CONNECT_GRANTED);
+        SocketHandler client_handler = this.getClient(to_client_ID);
+        if(client_handler == null) return;
+        client_handler.handlePacket(packet);
     }
-    public boolean usernameExists(String username, int caller_ID)
+    public synchronized void send(Packet packet, String client_name) {
+        SocketHandler client_handler = this.getClient(client_name);
+        if (client_handler == null) return;
+        client_handler.handlePacket(packet);
+    }
+
+
+    public synchronized void broadcast(Packet packet, int sent_from_ID) throws Exception
     {
-        for(SocketHandler handler : this.client_endpoints)
+        for (SocketHandler handler : this.client_endpoints)
         {
-            if(handler.getClientID() != caller_ID && handler.getClientName().equals(username)) return true;
+            if (handler.isinDoNotDisturbMode() || handler.getClientID() == sent_from_ID) continue;
+            handler.handlePacket(packet);
         }
-        return false;
     }
+
+
     public void addClient(Socket output_socket) throws Exception
     {
         Utility.print("Attempting to add user to database.");
@@ -187,55 +153,73 @@ public final class Server{
         out.flush();
         output_socket.close();
     }
-    public void start() {
+    public void removeClient(Integer client_ID, boolean ban) throws Exception
+    {
+        this.mutex.lock();
         try {
-            while(true)
+            //Explanation: Find the client handler with the given client ID.
+            SocketHandler client_configuration = this.getClient(client_ID);
+            //Client did not exist.
+            if(client_configuration == null) return;
+            //Explanation: Stop the inner thread loop from running.
+            if(!ban)
             {
-                this.tmp_output_socket = input_socket.accept();
-                Utility.print("Found client connection.");
-                this.addClient(this.tmp_output_socket);
+                Packet broadcast_packet = new Packet("Server", client_configuration.getClientName() + " has left the server. Say goodbye!", Packet.PacketType.BROADCAST, SenderType.SERVER);
+                this.broadcast(broadcast_packet, -1);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+            Packet goodbye_packet = new Packet("Server", "Apollo thanks you for your stay. Take care.", Packet.PacketType.DISCONNECT_GRANTED, SenderType.SERVER);
+            client_configuration.handlePacket(goodbye_packet);
+            if(ban) this.banned_clients.add(client_configuration.getClientConfig());
+            client_configuration.terminate();
+            //Remove the client_configuration from our array.
+            this.client_endpoints.remove(client_configuration);
         }
-        finally {
-            try {
-                input_socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+        finally{
+            this.mutex.unlock();
+        }
+    }
+    private SocketHandler getClient(int client_ID)
+    {
+        return this.client_endpoints.stream().filter(client -> client.getClientID() == client_ID).findAny().orElse(null);
+    }
+    private SocketHandler getClient(String client_name)
+    {
+        return this.client_endpoints.stream().filter(client -> client.getClientName().equals(client_name)).findAny().orElse(null);
+    }
+    private Packet checkUserBan(Socket output_socket)
+    {
+        InetAddress client_IP = output_socket.getInetAddress();
+        int client_port = output_socket.getPort();
+        for (InetSocketAddress banned_config : this.banned_clients)
+        {
+            if (banned_config.getAddress().toString().equals(client_IP.toString()) && banned_config.getPort() == client_port)
+            {
+                return new Packet("Server","Unauthorised request. You have banned from the server because of past behaviour.", Packet.PacketType.CONNECT_DENIED, SenderType.SERVER);
             }
         }
+        return new Packet("Server","Welcome to the Apollo Server. Please enter your desired username.", Packet.PacketType.CONNECT_GRANTED, SenderType.SERVER);
+    }
+    public boolean usernameExists(String username, int caller_ID)
+    {
+        for(SocketHandler handler : this.client_endpoints)
+        {
+            if(handler.getClientID() != caller_ID && handler.getClientName().equals(username)) return true;
+        }
+        return false;
+    }
+    public int getDoDClientID()
+    {
+        return 3;
+    }
+    public ArrayList<String> getBannedWords()
+    {
+        return this.sensored_words;
     }
     public static void main(String[] args) {
-        Server server = new Server();
-        while(!server.initialise())
-        {
-        }
+        new ArrayList<String>(){{add("");}};
+        Server server = new Server(new ArrayList<>(){{add("DARN"); add("JAVA"); add("PYTHON"); add("FRICK"); add("YEET"); add("CRAP");}});
+        server.launch();
     }
-    public static String sensorBannedWords(String user_message)
-    {
-        ArrayList<String> banned_words = new ArrayList<String>();
-        banned_words.add("DARN");
-        banned_words.add("JAVA");
-        banned_words.add("PYTHON");
-        banned_words.add("FRICK");
-        banned_words.add("YEET");
-        banned_words.add("CRAP");
 
-        ArrayList<String> split = new ArrayList<String>(Arrays.asList(user_message.split(" ")));
-        for(int i = 0; i < split.size(); ++i)
-        {
-            String word = split.get(i);
-            for(String banned_word : banned_words)
-            {
-                String upper_word = word.toUpperCase();
 
-                if(upper_word.equals(banned_word))
-                {
-                    split.set(i,new String("*").repeat(word.length()));
-                }
-            }
-        }
-        return String.join(" ", split);
-    }
 }
